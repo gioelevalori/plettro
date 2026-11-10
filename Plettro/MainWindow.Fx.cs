@@ -28,6 +28,10 @@ public partial class MainWindow
     double fxInDisplay = -90, fxOutDisplay = -90;
     DateTime fxLastClip;
     bool fxCalibrating;
+    Border fxGateMarker = null!;
+    TextBlock fxLevelText = null!;
+    double fxInHold = -90;
+    DateTime fxInHoldTime;
 
     // =====================================================================
     // Build UI
@@ -91,6 +95,8 @@ public partial class MainWindow
         meters.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         meters.Children.Add(new TextBlock { Text = "In", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
         var inTrack = MeterTrack(out fxInBar); Grid.SetColumn(inTrack, 1); meters.Children.Add(inTrack);
+        fxGateMarker = new Border { Width = 3, Background = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-10, -3, 0, -3), ToolTip = "Soglia del noise gate: la corda deve superarla per suonare" };
+        inTrack.Children.Add(fxGateMarker);
         var outLabel = new TextBlock { Text = "Out", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 8, 0) };
         Grid.SetColumn(outLabel, 2); meters.Children.Add(outLabel);
         var outTrack = MeterTrack(out fxOutBar); Grid.SetColumn(outTrack, 3); meters.Children.Add(outTrack);
@@ -100,6 +106,8 @@ public partial class MainWindow
         clipPanel.Children.Add(new TextBlock { Text = "CLIP", Margin = new Thickness(6, 0, 0, 0), Foreground = Muted });
         Grid.SetColumn(clipPanel, 4); meters.Children.Add(clipPanel);
         topStack.Children.Add(meters);
+        fxLevelText = new TextBlock { Foreground = Muted, FontSize = 12, Margin = new Thickness(0, 6, 0, 0), FontFamily = new FontFamily("Consolas") };
+        topStack.Children.Add(fxLevelText);
         top.Child = topStack;
         FxRoot.Children.Add(top);
 
@@ -361,7 +369,7 @@ public partial class MainWindow
         fxCalibrating = false;
         settings.FxNoiseFloorDb = noiseDb;
         rig.GateOn = true;
-        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + 8), -80, -15);
+        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + 6), -80, -15);
         RefreshFxControls();
         ApplyRig();
         string advice = noiseDb > -45
@@ -375,7 +383,7 @@ public partial class MainWindow
     void AdaptGateToNoise()
     {
         if (settings.FxNoiseFloorDb is not double nf) return;
-        double min = Math.Round(nf + 8);
+        double min = Math.Round(nf + 6);
         if (rig.GateThresholdDb < min) rig.GateThresholdDb = Math.Min(min, -15);
         if (nf > -72) rig.GateOn = true;
     }
@@ -458,6 +466,25 @@ public partial class MainWindow
         Meter(fxInBar, pin, ref fxInDisplay, dt);
         Meter(fxOutBar, pout, ref fxOutDisplay, dt);
         fxClip.Fill = (DateTime.UtcNow - fxLastClip).TotalSeconds < 1.5 ? Bad : ClipOff;
+
+        // gate threshold marker on the input meter + readout
+        var track = (FrameworkElement)fxInBar.Parent;
+        bool showGate = rig.GateOn && track.ActualWidth > 0;
+        fxGateMarker.Visibility = showGate ? Visibility.Visible : Visibility.Collapsed;
+        if (showGate)
+        {
+            double left = Math.Round(track.ActualWidth * Math.Clamp((rig.GateThresholdDb + 60) / 60, 0, 1)) - 1;
+            if (fxGateMarker.Margin.Left != left) fxGateMarker.Margin = new Thickness(left, -3, 0, -3);
+        }
+        double inDb = pin > 0 ? 20 * Math.Log10(pin) : -90;
+        if (inDb > fxInHold || (DateTime.UtcNow - fxInHoldTime).TotalSeconds > 2) { fxInHold = inDb; fxInHoldTime = DateTime.UtcNow; }
+        if (r == null) fxLevelText.Text = "";
+        else
+        {
+            string gateTxt = rig.GateOn ? $"soglia gate {rig.GateThresholdDb:0} dB · gate {(r.GateIsOpen ? "APERTO" : "chiuso")}" : "gate spento";
+            string noiseTxt = settings.FxNoiseFloorDb is double nf ? $" · ronzio {nf:0} dB" : "";
+            fxLevelText.Text = $"Ingresso: picco {fxInHold:0} dB{noiseTxt} · {gateTxt}";
+        }
     }
 
     static void Meter(Border bar, float peak, ref double display, double dt)

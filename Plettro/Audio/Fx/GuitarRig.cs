@@ -66,6 +66,8 @@ public sealed class GuitarRig
 
     public float PeakOut { get; private set; }
     public float PeakIn { get; private set; }
+    /// <summary>True while the noise gate is letting the signal through.</summary>
+    public bool GateIsOpen => !GateOn || gateGain > 0.5;
 
     // ---------------- noise calibration ----------------
     int calibrateLeft;
@@ -173,7 +175,7 @@ public sealed class GuitarRig
         double envRelease = Math.Exp(-1 / (0.05 * fs));
         double gateOpen = 1 - Math.Exp(-1 / (0.001 * fs));
         double gateClose = 1 - Math.Exp(-1 / (0.012 * fs));
-        int holdSamples = (int)(0.05 * fs);
+        int holdSamples = (int)(0.08 * fs);
         double smooth = 1 - Math.Exp(-1 / (0.02 * fs));
 
         double driveGain = 2 + Drive * 6;
@@ -206,10 +208,10 @@ public sealed class GuitarRig
             if (GateOn)
             {
                 gateEnv = Math.Max(a, gateEnv * envRelease);
-                // hysteresis (opens above the threshold, closes 6 dB below it) + 50 ms hold
+                // hysteresis (opens above the threshold, closes 4.4 dB below it) + 80 ms hold
                 bool open = gateGain > 0.5;
                 double target;
-                if (gateEnv > (open ? gateThr * 0.5 : gateThr)) { target = 1; gateHold = holdSamples; }
+                if (gateEnv > (open ? gateThr * 0.6 : gateThr)) { target = 1; gateHold = holdSamples; }
                 else if (gateHold > 0) { gateHold--; target = open ? 1 : 0; }
                 else target = 0;
                 gateGain += (target - gateGain) * (target > gateGain ? gateOpen : gateClose);
