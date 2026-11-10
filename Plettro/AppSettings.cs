@@ -7,6 +7,8 @@ public sealed class AppSettings
 {
     public string? InputDeviceId { get; set; }
     public string? OutputDeviceId { get; set; }
+    /// <summary>True once the user picked a device by hand; until then the Scarlett is preferred.</summary>
+    public bool DevicesChosenByUser { get; set; }
     public int ChannelMode { get; set; }
     public double A4 { get; set; } = 440;
     public int TuningIndex { get; set; }

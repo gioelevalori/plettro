@@ -332,7 +332,7 @@ public partial class MainWindow
             int ch = fxChannelCombo.SelectedIndex;
             if (UsingAsio)
             {
-                live.StartAsio((string)fxDriverCombo.SelectedItem, ch, ConfigureRig);
+                live.StartAsio((string)fxDriverCombo.SelectedItem, ch, ConfigureRig, FocusriteRate());
             }
             else
             {
@@ -399,6 +399,18 @@ public partial class MainWindow
         double min = Math.Round(nf + 6);
         if (rig.GateThresholdDb < min) rig.GateThresholdDb = Math.Min(min, MaxGateDb);
         if (nf > -72) rig.GateOn = true;
+    }
+
+    /// <summary>Sample rate the Focusrite currently runs at (from its Windows endpoint), 0 if unknown.</summary>
+    int FocusriteRate()
+    {
+        try
+        {
+            foreach (var d in enumerator.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.DeviceState.Active))
+                if (IsFocusrite(d.FriendlyName)) return d.AudioClient.MixFormat.SampleRate;
+        }
+        catch { }
+        return 0;
     }
 
     void StopLive()
@@ -469,11 +481,16 @@ public partial class MainWindow
         if (fxChannelCombo != null) settings.FxInputChannel = fxChannelCombo.SelectedIndex;
     }
 
-    void UpdateFxMeters(double dt)
+    void CheckCalibration()
     {
         var r = live.Rig;
         if (fxCalibrating && r != null && !r.IsCalibrating && !double.IsNaN(r.CalibratedNoiseDb))
             FinishCalibration(r.CalibratedNoiseDb);
+    }
+
+    void UpdateFxMeters(double dt)
+    {
+        var r = live.Rig;
         float pin = r?.PeakIn ?? 0, pout = r?.PeakOut ?? 0;
         if (pin >= 0.98f) fxLastClip = DateTime.UtcNow;
         Meter(fxInBar, pin, ref fxInDisplay, dt);

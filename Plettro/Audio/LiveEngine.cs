@@ -36,14 +36,15 @@ public sealed class LiveEngine : IDisposable
 
     // ---------------------------------------------------------------- ASIO
 
-    public void StartAsio(string driver, int inputChannel, Action<GuitarRig> configure)
+    public void StartAsio(string driver, int inputChannel, Action<GuitarRig> configure, int preferredRate = 0)
     {
         Stop();
         var a = new AsioOut(driver);
         try
         {
             int rate = 48000;
-            foreach (var r in new[] { 48000, 44100, 96000 })
+            // use the rate the interface already runs at (changing it would disturb other apps and Plettro's own WASAPI streams)
+            foreach (var r in new[] { preferredRate, 48000, 44100, 96000 }.Where(r => r > 0))
                 if (a.IsSampleRateSupported(r)) { rate = r; break; }
 
             int inputs = a.DriverInputChannelCount;

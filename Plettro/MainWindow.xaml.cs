@@ -219,9 +219,11 @@ public partial class MainWindow : Window
     {
         if (list.Count == 0) return null;
         var saved = list.FirstOrDefault(d => d.Id == savedId);
-        if (saved != null) return saved;
         var focusrite = list.FirstOrDefault(d => IsFocusrite(d.Name));
+        // a device picked by hand always wins; an automatic pick yields to the Scarlett when it is plugged in
+        if (saved != null && (settings.DevicesChosenByUser || focusrite == null)) return saved;
         if (focusrite != null) return focusrite;
+        if (saved != null) return saved;
         try
         {
             if (enumerator.HasDefaultAudioEndpoint(flow, Role.Multimedia))
@@ -294,12 +296,14 @@ public partial class MainWindow : Window
     void InputCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!loaded || suppressDeviceEvents) return;
+        settings.DevicesChosenByUser = true;
         StartInput();
     }
 
     void OutputCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!loaded || suppressDeviceEvents) return;
+        settings.DevicesChosenByUser = true;
         StartOutput();
     }
 
@@ -344,6 +348,7 @@ public partial class MainWindow : Window
             UpdateLevel(dt);
         }
         UpdateMetronome(dt, Tabs.SelectedIndex == 1);
+        CheckCalibration();
         if (Tabs.SelectedIndex == 2) UpdateFxMeters(dt);
         UpdateSession();
     }

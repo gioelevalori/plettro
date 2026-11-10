@@ -9,7 +9,7 @@
     <AssemblyName>Plettro</AssemblyName>
     <RootNamespace>Plettro</RootNamespace>
     <ApplicationIcon>Assets\plettro.ico</ApplicationIcon>
-    <Version>1.2.4</Version>
+    <Version>1.3.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Product>Plettro</Product>
     <Description>Accordatore e metronomo per chitarra elettrica</Description>

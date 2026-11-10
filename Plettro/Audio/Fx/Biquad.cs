@@ -11,6 +11,9 @@ public struct Biquad
         double y = b0 * x + z1;
         z1 = b1 * x - a1 * y + z2;
         z2 = b2 * x - a2 * y;
+        // flush denormals: decaying filter states would otherwise slow the CPU down a lot in silence
+        if (Math.Abs(z1) < 1e-20) z1 = 0;
+        if (Math.Abs(z2) < 1e-20) z2 = 0;
         return (float)y;
     }
 

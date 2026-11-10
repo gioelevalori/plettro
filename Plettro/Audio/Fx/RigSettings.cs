@@ -106,5 +106,93 @@ public static class RigPresets
                 Model = AmpModel.Metal, Gain = 7, Bass = 6, Mid = 4, Treble = 6.5, Presence = 6.5, Master = 5.5,
                 Cab = CabType.Cab4x12, ReverbOn = true, ReverbSize = 3, ReverbMix = 0.8,
             }),
+        new("Pop punk",
+            "Distorto, compatto e brillante, con un overdrive come booster per pennate veloci e precise. Stile pop punk anni 2000.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -56,
+                DriveOn = true, Drive = 1.5, DriveTone = 6, DriveLevel = 7,
+                Model = AmpModel.Lead, Gain = 5.5, Bass = 6, Mid = 5.5, Treble = 7, Presence = 6.5, Master = 6,
+                Cab = CabType.Cab4x12, ReverbOn = true, ReverbSize = 3, ReverbMix = 0.6,
+            }),
+        new("Grunge anni '90",
+            "Distorsione grossa e un po' sporca, medi leggermente scavati e tanti bassi. Per riff pesanti e strofe pulite-forti.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -58,
+                DriveOn = true, Drive = 7, DriveTone = 4.5, DriveLevel = 6,
+                Model = AmpModel.Crunch, Gain = 6.5, Bass = 6.5, Mid = 4.5, Treble = 6, Presence = 5.5, Master = 6,
+                Cab = CabType.Cab4x12, ReverbOn = true, ReverbSize = 4, ReverbMix = 1,
+            }),
+        new("Hard rock anni '80",
+            "Lead britannico con medi in avanti e un po' di riverbero: riff e assoli hard rock / glam.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -58,
+                DriveOn = true, Drive = 2, DriveTone = 6, DriveLevel = 7,
+                Model = AmpModel.Lead, Gain = 6.5, Bass = 5.5, Mid = 7, Treble = 6.5, Presence = 6, Master = 6,
+                Cab = CabType.Cab4x12, DelayOn = true, DelayMs = 330, DelayFeedback = 2, DelayMix = 1.5,
+                ReverbOn = true, ReverbSize = 5, ReverbMix = 1.8,
+            }),
+        new("Thrash metal",
+            "Molto gain, medi scavati, attacco stretto e gate deciso per le ritmiche in pennata alternata.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -48,
+                DriveOn = true, Drive = 0.5, DriveTone = 7, DriveLevel = 8,
+                Model = AmpModel.Metal, Gain = 6, Bass = 6.5, Mid = 3.5, Treble = 7, Presence = 7, Master = 5.5,
+                Cab = CabType.Cab4x12, ReverbOn = false,
+            }),
+        new("Indie rock",
+            "Crunch medio, brillante e articolato, cassa aperta 2x12: si sentono tutte le note degli accordi.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -62,
+                Model = AmpModel.Crunch, Gain = 6, Bass = 5, Mid = 6.5, Treble = 6.5, Presence = 6, Master = 6,
+                Cab = CabType.Cab2x12, ReverbOn = true, ReverbSize = 5, ReverbMix = 1.5,
+            }),
+        new("Blues elettrico",
+            "Ampli appena saturo spinto da un overdrive caldo: risponde al tocco e alla manopola del volume.",
+            new RigSettings
+            {
+                GateOn = false,
+                DriveOn = true, Drive = 4, DriveTone = 5, DriveLevel = 6,
+                Model = AmpModel.Crunch, Gain = 4, Bass = 5.5, Mid = 6.5, Treble = 5.5, Presence = 5, Master = 6,
+                Cab = CabType.Cab2x12, ReverbOn = true, ReverbSize = 6, ReverbMix = 2.5,
+            }),
+        new("Funk pulito",
+            "Pulito secco e brillante, pochi bassi, cassa piccola: per ritmiche funk e accordi stoppati.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -64,
+                Model = AmpModel.Clean, Gain = 2.5, Bass = 4, Mid = 4.5, Treble = 7.5, Presence = 7, Master = 5,
+                Cab = CabType.Cab1x12, ReverbOn = true, ReverbSize = 3, ReverbMix = 0.8,
+            }),
+        new("Surf rock",
+            "Pulito brillante con tanto riverbero, per il classico suono surf anni '60.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -64,
+                Model = AmpModel.Clean, Gain = 3.5, Bass = 4.5, Mid = 5, Treble = 7.5, Presence = 6.5, Master = 5.5,
+                Cab = CabType.Cab1x12, ReverbOn = true, ReverbSize = 8, ReverbMix = 5,
+            }),
+        new("Rockabilly slapback",
+            "Leggero crunch con un'eco corta e secca (slapback), come nel rock'n'roll anni '50.",
+            new RigSettings
+            {
+                GateOn = false,
+                Model = AmpModel.Crunch, Gain = 3.5, Bass = 5, Mid = 6, Treble = 6.5, Presence = 6, Master = 5.5,
+                Cab = CabType.Cab1x12, DelayOn = true, DelayMs = 110, DelayFeedback = 0.5, DelayMix = 4,
+                ReverbOn = true, ReverbSize = 3, ReverbMix = 0.8,
+            }),
+        new("Ambient",
+            "Pulito con delay lungo e riverbero enorme: suoni atmosferici, arpeggi lenti e note lunghe.",
+            new RigSettings
+            {
+                GateOn = true, GateThresholdDb = -66,
+                Model = AmpModel.Clean, Gain = 3.5, Bass = 5, Mid = 5, Treble = 6, Presence = 5.5, Master = 5,
+                Cab = CabType.Cab2x12, DelayOn = true, DelayMs = 520, DelayFeedback = 5.5, DelayMix = 4,
+                ReverbOn = true, ReverbSize = 9.5, ReverbMix = 5.5,
+            }),
     };
 }

@@ -20,7 +20,8 @@ public sealed class GuitarRig
 
     public bool DriveOn { get; set; }
     public double Drive { get; set; } = 4;
-    public double DriveTone { get; set; } = 5;
+    public double DriveTone { get => driveToneKnob; set { if (driveToneKnob != value) { driveToneKnob = value; dirty = true; } } }
+    double driveToneKnob = 5;
     public double DriveLevel { get; set; } = 6;
 
     public AmpModel Model { get => model; set { model = value; dirty = true; } }
@@ -161,10 +162,11 @@ public sealed class GuitarRig
 
     double ModelTrim() => model switch
     {
+        // distorted models are compressed: keep ~5 dB of headroom below the output limiter
         AmpModel.Clean => 1.1,
-        AmpModel.Crunch => 0.55,
-        AmpModel.Lead => 0.4,
-        _ => 0.5,
+        AmpModel.Crunch => 0.31,
+        AmpModel.Lead => 0.23,
+        _ => 0.28,
     };
 
     /// <summary>Processes a mono block in place.</summary>
@@ -235,6 +237,7 @@ public sealed class GuitarRig
             if (GateOn)
             {
                 gateEnv = Math.Max(a, gateEnv * envRelease);
+                if (gateEnv < 1e-12) gateEnv = 0;
                 // hysteresis (opens above the threshold, closes 4.4 dB below it) + 80 ms hold
                 bool open = gateGain > 0.5;
                 double target;
@@ -289,7 +292,8 @@ public sealed class GuitarRig
                 int rp = delayPos - delaySamples;
                 if (rp < 0) rp += delayBuf.Length;
                 float echo = delayBuf[rp];
-                delayBuf[delayPos] = y + delayLp.Process(echo) * fb;
+                float d = y + delayLp.Process(echo) * fb;
+                delayBuf[delayPos] = Math.Abs(d) < 1e-15f ? 0 : d;
                 y += echo * dmix;
             }
             else delayBuf[delayPos] = 0;
@@ -383,7 +387,9 @@ public sealed class Reverb
         {
             float o = buf[i];
             store = o * (1 - Damp) + store * Damp;
-            buf[i] = x + store * Feedback;
+            if (Math.Abs(store) < 1e-15f) store = 0; // denormal flush
+            float v = x + store * Feedback;
+            buf[i] = Math.Abs(v) < 1e-15f ? 0 : v;
             if (++i >= buf.Length) i = 0;
             return o;
         }
@@ -397,7 +403,8 @@ public sealed class Reverb
         {
             float b = buf[i];
             float o = -x + b;
-            buf[i] = x + b * 0.5f;
+            float v = x + b * 0.5f;
+            buf[i] = Math.Abs(v) < 1e-15f ? 0 : v;
             if (++i >= buf.Length) i = 0;
             return o;
         }

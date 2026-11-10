@@ -30,7 +30,8 @@ The interface is in Italian.
 - **Ampli virtuale** con 4 modelli: Clean, Crunch, Lead (britannico modificato), Metal. Il preamp ha un sovracampionamento 4× per ridurre l'aliasing. Ci sono bassi, medi, alti, presence e master.
 - **Pedaliera**: noise gate, overdrive, delay, riverbero
 - **Cassa**: simulazioni 4x12, 2x12 e 1x12, oppure **IR da file .wav**, per caricare risposte all'impulso di casse reali
-- **Preset**: Punk rock (stile Green Day), Pulito cristallino, Crunch blues, Rock classico, Assolo lead, Metal
+- **16 preset**: Punk rock (stile Green Day), Pop punk, Grunge anni '90, Rock classico, Hard rock anni '80, Indie rock, Assolo lead, Metal, Thrash metal, Crunch blues, Blues elettrico, Rockabilly slapback, Pulito cristallino, Funk pulito, Surf rock, Ambient
+- **Noise gate con calibrazione automatica** del ronzio della chitarra
 - **ASIO** per la latenza minima (driver Focusrite USB ASIO). Se ASIO non c'è, si può usare WASAPI.
 - Misuratori di livello in ingresso e in uscita, con spia CLIP
 
