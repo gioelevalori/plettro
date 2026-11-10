@@ -4,7 +4,16 @@ namespace Plettro.Audio;
 
 public enum AccentLevel { Accent = 0, Normal = 1, Mute = 2 }
 
-public enum ClickSound { Beep = 0, Wood = 1, Click = 2 }
+public enum ClickSound { Beep = 0, Wood = 1, Click = 2, HiHat = 3, Ride = 4, Kit = 5 }
+
+public sealed class SoundSet
+{
+    public required float[] Accent;
+    public required float[] Normal;
+    public required float[] Sub;
+    /// <summary>Optional sound for beats 2, 4, ... (drum kit: snare).</summary>
+    public float[]? Backbeat;
+}
 
 public struct BeatEvent
 {
@@ -34,7 +43,11 @@ public sealed class MetronomeProvider : ISampleProvider
     public int BeatsPerBar { get; set; } = 4;
     public int Subdivision { get; set; } = 1;
     public float Volume { get; set; } = 0.8f;
-    public ClickSound Sound { get => sound; set { sound = value; soundsDirty = true; } }
+    public ClickSound Sound
+    {
+        get => sound;
+        set { sound = value; sounds = GetSounds(sampleRate, value); }
+    }
     public AccentLevel[] Accents { get; } = Enumerable.Range(0, MaxBeats).Select(i => i == 0 ? AccentLevel.Accent : AccentLevel.Normal).ToArray();
 
     public bool TrainerEnabled { get; set; }
@@ -49,9 +62,10 @@ public sealed class MetronomeProvider : ISampleProvider
     // --- state ---
     volatile bool running;
     volatile bool startRequested, stopRequested;
-    volatile bool soundsDirty = true;
-    ClickSound sound = ClickSound.Beep;
-    float[] accentSample = Array.Empty<float>(), normalSample = Array.Empty<float>(), subSample = Array.Empty<float>();
+    volatile bool previewRequested;
+    ClickSound sound = ClickSound.Kit;
+    volatile SoundSet? sounds;
+    readonly Dictionary<(int, ClickSound), SoundSet> soundCache = new();
     long frameCounter;
     double nextTick;
     int subIndex;
@@ -76,7 +90,23 @@ public sealed class MetronomeProvider : ISampleProvider
         startRequested = stopRequested = false;
         frameCounter = 0;
         voices.Clear();
-        soundsDirty = true;
+        sounds = GetSounds(rate, sound);
+    }
+
+    /// <summary>Plays the accent sound once (used when choosing a sound while stopped).</summary>
+    public void Preview() => previewRequested = true;
+
+    SoundSet GetSounds(int sr, ClickSound s)
+    {
+        lock (soundCache)
+        {
+            if (!soundCache.TryGetValue((sr, s), out var set))
+            {
+                set = BuildSounds(sr, s);
+                soundCache[(sr, s)] = set;
+            }
+            return set;
+        }
     }
 
     public void Start() { stopRequested = false; startRequested = true; }
@@ -99,29 +129,61 @@ public sealed class MetronomeProvider : ISampleProvider
         return false;
     }
 
-    void RebuildSounds()
+    static SoundSet BuildSounds(int sr, ClickSound sound)
     {
-        soundsDirty = false;
-        int sr = sampleRate;
         switch (sound)
         {
+            case ClickSound.HiHat:
+                return new SoundSet
+                {
+                    Accent = DrumSynth.HiHatOpen(sr, 0.95),
+                    Normal = DrumSynth.HiHatClosed(sr, 0.85),
+                    Sub = DrumSynth.HiHatClosed(sr, 0.45, seed: 9),
+                };
+            case ClickSound.Ride:
+                return new SoundSet
+                {
+                    Accent = DrumSynth.RideBell(sr, 0.95),
+                    Normal = DrumSynth.Ride(sr, 0.8),
+                    Sub = DrumSynth.Ride(sr, 0.42, seed: 8),
+                };
+            case ClickSound.Kit:
+            {
+                var hat = DrumSynth.HiHatClosed(sr, 1.0);
+                var kick = DrumSynth.Kick(sr, 1.0);
+                return new SoundSet
+                {
+                    Accent = DrumSynth.Combine(DrumSynth.Crash(sr, 1.0), 0.5, kick, 0.62),
+                    Normal = DrumSynth.Combine(hat, 0.42, kick, 0.6),
+                    Backbeat = DrumSynth.Combine(hat, 0.38, DrumSynth.Snare(sr, 1.0), 0.66),
+                    Sub = DrumSynth.HiHatClosed(sr, 0.4, seed: 9),
+                };
+            }
             case ClickSound.Wood:
-                accentSample = Synth(sr, 0.09, t => Wood(t, 1250));
-                normalSample = Synth(sr, 0.09, t => Wood(t, 880) * 0.85);
-                subSample = Synth(sr, 0.07, t => Wood(t, 660) * 0.5);
-                break;
+                return new SoundSet
+                {
+                    Accent = Synth(sr, 0.09, t => Wood(t, 1250)),
+                    Normal = Synth(sr, 0.09, t => Wood(t, 880) * 0.85),
+                    Sub = Synth(sr, 0.07, t => Wood(t, 660) * 0.5),
+                };
             case ClickSound.Click:
+            {
                 var rng = new Random(7);
                 var noise = Enumerable.Range(0, sr / 10).Select(_ => (float)(rng.NextDouble() * 2 - 1)).ToArray();
-                accentSample = Synth(sr, 0.05, t => ClickN(t, noise, sr) * 1.0 + Math.Sin(2 * Math.PI * 3200 * t) * Math.Exp(-t / 0.004) * 0.5);
-                normalSample = Synth(sr, 0.05, t => ClickN(t, noise, sr) * 0.8);
-                subSample = Synth(sr, 0.04, t => ClickN(t, noise, sr) * 0.4);
-                break;
+                return new SoundSet
+                {
+                    Accent = Synth(sr, 0.05, t => ClickN(t, noise, sr) * 1.0 + Math.Sin(2 * Math.PI * 3200 * t) * Math.Exp(-t / 0.004) * 0.5),
+                    Normal = Synth(sr, 0.05, t => ClickN(t, noise, sr) * 0.8),
+                    Sub = Synth(sr, 0.04, t => ClickN(t, noise, sr) * 0.4),
+                };
+            }
             default:
-                accentSample = Synth(sr, 0.08, t => Beep(t, 1760));
-                normalSample = Synth(sr, 0.08, t => Beep(t, 1320) * 0.8);
-                subSample = Synth(sr, 0.06, t => Beep(t, 990) * 0.45);
-                break;
+                return new SoundSet
+                {
+                    Accent = Synth(sr, 0.08, t => Beep(t, 1760)),
+                    Normal = Synth(sr, 0.08, t => Beep(t, 1320) * 0.8),
+                    Sub = Synth(sr, 0.06, t => Beep(t, 990) * 0.45),
+                };
         }
     }
 
@@ -154,7 +216,12 @@ public sealed class MetronomeProvider : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
-        if (soundsDirty) RebuildSounds();
+        var set = sounds;
+        if (previewRequested)
+        {
+            previewRequested = false;
+            if (set != null && !running) voices.Add(new Voice { Data = set.Accent, Pos = 0, Gain = 1f });
+        }
 
         if (startRequested)
         {
@@ -178,7 +245,7 @@ public sealed class MetronomeProvider : ISampleProvider
             long f = frameCounter + i;
             if (running && f >= nextTick)
             {
-                Tick(f);
+                Tick(f, set);
                 nextTick += 60.0 / Bpm / Math.Max(1, Subdivision) * sampleRate;
             }
 
@@ -192,6 +259,7 @@ public sealed class MetronomeProvider : ISampleProvider
                 else voices[v] = voice;
             }
             s *= vol;
+            if (s > 0.9f || s < -0.9f) s = 0.9f * MathF.Tanh(s / 0.9f); // soft limiter, never clips
             buffer[offset + 2 * i] = s;
             buffer[offset + 2 * i + 1] = s;
         }
@@ -199,7 +267,7 @@ public sealed class MetronomeProvider : ISampleProvider
         return count;
     }
 
-    void Tick(long frame)
+    void Tick(long frame, SoundSet? set)
     {
         int subdiv = Math.Max(1, Subdivision);
         int beats = Math.Clamp(BeatsPerBar, 1, MaxBeats);
@@ -221,7 +289,7 @@ public sealed class MetronomeProvider : ISampleProvider
         int cycle = Math.Max(1, GapPlayBars) + Math.Max(1, GapMuteBars);
         bool muted = GapEnabled && (bar % cycle) >= Math.Max(1, GapPlayBars);
 
-        if (!muted)
+        if (!muted && set != null)
         {
             float[]? sample = null;
             if (sub == 0)
@@ -229,19 +297,19 @@ public sealed class MetronomeProvider : ISampleProvider
                 var acc = Accents[beat];
                 sample = acc switch
                 {
-                    AccentLevel.Accent => accentSample,
-                    AccentLevel.Normal => normalSample,
+                    AccentLevel.Accent => set.Accent,
+                    AccentLevel.Normal => beat % 2 == 1 && set.Backbeat != null ? set.Backbeat : set.Normal,
                     _ => null,
                 };
             }
             else if (Accents[beat] != AccentLevel.Mute)
             {
-                sample = subSample;
+                sample = set.Sub;
             }
 
             if (sample != null && sample.Length > 0)
             {
-                if (voices.Count > 8) voices.RemoveAt(0);
+                if (voices.Count > 16) voices.RemoveAt(0);
                 voices.Add(new Voice { Data = sample, Pos = 0, Gain = 1f });
             }
         }

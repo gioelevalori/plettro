@@ -17,7 +17,8 @@ public sealed class AppSettings
     public double Bpm { get; set; } = 100;
     public int BeatsPerBar { get; set; } = 4;
     public int Subdivision { get; set; } = 1;
-    public int Sound { get; set; }
+    public int Sound { get; set; } = 5; // drum kit
+    public int SettingsVersion { get; set; }
     public double Volume { get; set; } = 0.8;
     public int[]? Accents { get; set; }
 
@@ -38,7 +39,11 @@ public sealed class AppSettings
         try
         {
             if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
+            {
+                var s = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
+                if (s.SettingsVersion < 1) { s.Sound = 5; s.SettingsVersion = 1; } // v1.1: drum kit is the new default
+                return s;
+            }
         }
         catch { /* corrupted settings: start fresh */ }
         return new AppSettings();
@@ -48,6 +53,7 @@ public sealed class AppSettings
     {
         try
         {
+            SettingsVersion = 1;
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
             File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
         }

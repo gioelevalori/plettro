@@ -184,6 +184,9 @@
                                         <ComboBoxItem Content="Beep elettronico"/>
                                         <ComboBoxItem Content="Legno (woodblock)"/>
                                         <ComboBoxItem Content="Click secco"/>
+                                        <ComboBoxItem Content="🥁 Charleston (hi-hat)"/>
+                                        <ComboBoxItem Content="🥁 Piatto ride"/>
+                                        <ComboBoxItem Content="🥁 Batteria completa"/>
                                     </ComboBox>
                                     <DockPanel>
                                         <TextBlock x:Name="VolumeText" DockPanel.Dock="Right" Text="80%" Width="44" TextAlignment="Right"/>

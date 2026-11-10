@@ -116,7 +116,7 @@ public partial class MainWindow : Window
         Metro.Bpm = settings.Bpm;
         Metro.BeatsPerBar = Math.Clamp(settings.BeatsPerBar, 1, MetronomeProvider.MaxBeats);
         Metro.Subdivision = settings.Subdivision;
-        Metro.Sound = (ClickSound)Math.Clamp(settings.Sound, 0, 2);
+        Metro.Sound = (ClickSound)Math.Clamp(settings.Sound, 0, 5);
         Metro.Volume = (float)settings.Volume;
 
         BpmSlider.Value = Metro.Bpm;
@@ -766,6 +766,7 @@ public partial class MainWindow : Window
     {
         if (!loaded) return;
         Metro.Sound = (ClickSound)Math.Max(0, SoundCombo.SelectedIndex);
+        if (!Metro.IsRunning) Metro.Preview();
     }
 
     void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

@@ -22,7 +22,7 @@ The interface is in Italian.
 - Da 20 a 300 BPM; il suono viene generato direttamente nel flusso audio, quindi il tempo è preciso al campione e senza jitter
 - Da 1/4 a 12/4, suddivisioni (ottavi, terzine, sedicesimi, sestine)
 - **Accenti per battito**: clicca sui pallini per scegliere accento → normale → muto
-- 3 suoni: beep, legno (woodblock), click
+- **Suoni di batteria** generati in tempo reale: **batteria completa** (crash e cassa sull'1, rullante su 2 e 4, charleston sugli altri battiti e sulle suddivisioni), **charleston (hi-hat)** e **piatto ride** con campana. Restano anche beep, legno (woodblock) e click.
 - **Tap tempo**, rotellina del mouse e scorciatoie da tastiera
 - Nome del tempo (Largo, Andante, Allegro, Presto…)
 
