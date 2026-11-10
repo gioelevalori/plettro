@@ -59,7 +59,7 @@ public static class RigPresets
             new RigSettings
             {
                 GateOn = true, GateThresholdDb = -58,
-                Model = AmpModel.Lead, Gain = 5.5, Bass = 6, Mid = 6.5, Treble = 6.5, Presence = 6, Master = 6,
+                Model = AmpModel.Lead, Gain = 5.5, Bass = 5.5, Mid = 6.5, Treble = 7, Presence = 6.5, Master = 6,
                 Cab = CabType.Cab4x12, ReverbOn = true, ReverbSize = 3, ReverbMix = 0.8,
             }),
         new("Pulito cristallino",

@@ -55,7 +55,7 @@ public sealed class GuitarRig
     Biquad driveHp, driveTone, driveMidHump;
     Biquad ampTight, ampPreEq, ampInterHp, ampInterLp;
     Biquad toneBass, toneMid, toneTreble, tonePresence;
-    Biquad cab1, cab2, cab3, cab4, cab5;
+    Biquad cab1, cab2, cab3, cab4, cab5, cab6, cab7;
     readonly Oversampler os1, os2;
     double gainSmooth = 1, masterSmooth = 1;
 
@@ -108,7 +108,8 @@ public sealed class GuitarRig
         switch (model)
         {
             case AmpModel.Clean:
-                ampTight.HighPass(fs, 70); ampPreEq.Peak(fs, 2500, 0.7, 2); break;
+                // "bright" circuit typical of clean American amps
+                ampTight.HighPass(fs, 70); ampPreEq.HighShelf(fs, 1800, 7, 0.7); break;
             case AmpModel.Crunch:
                 ampTight.HighPass(fs, 90); ampPreEq.Peak(fs, 1000, 0.8, 3); break;
             case AmpModel.Lead:
@@ -117,26 +118,30 @@ public sealed class GuitarRig
                 ampTight.HighPass(fs, 160); ampPreEq.Peak(fs, 1400, 0.9, 4); break;
         }
         ampInterHp.HighPass(fs, 40);
-        ampInterLp.LowPass(fs, model == AmpModel.Metal ? 7000 : 6000);
+        ampInterLp.LowPass(fs, model == AmpModel.Metal ? 10000 : 9000);
 
         double midCenter = model == AmpModel.Metal ? 650 : 750;
         double midBias = model == AmpModel.Metal ? -3 : 0;
         toneBass.LowShelf(fs, 140, (bass - 5) * 2.4);
         toneMid.Peak(fs, midCenter, 0.6, (mid - 5) * 2.4 + midBias);
         toneTreble.HighShelf(fs, 2600, (treble - 5) * 2.4);
-        tonePresence.HighShelf(fs, 5000, (presence - 5) * 1.8);
+        tonePresence.HighShelf(fs, 4000, (presence - 5) * 1.8);
 
         switch (cab)
         {
             case CabType.Cab4x12:
-                cab1.HighPass(fs, 80, 0.9); cab2.Peak(fs, 115, 1.4, 4); cab3.Peak(fs, 2400, 1.2, 3);
-                cab4.LowPass(fs, 4600, 0.8); cab5.LowPass(fs, 5200, 1.1); break;
+                // closed 4x12 with 12" speakers: tight lows, mid scoop, 2.5-4 kHz "bite", roll-off above ~6 kHz
+                cab1.HighPass(fs, 75, 0.8); cab2.Peak(fs, 110, 1.2, 2); cab3.Peak(fs, 400, 1.0, -2.5);
+                cab4.Peak(fs, 2800, 1.1, 4); cab5.Peak(fs, 4300, 1.5, 1.5);
+                cab6.LowPass(fs, 6200, 0.9); cab7.LowPass(fs, 8000, 0.7); break;
             case CabType.Cab2x12:
-                cab1.HighPass(fs, 90, 0.8); cab2.Peak(fs, 140, 1.2, 2.5); cab3.Peak(fs, 2000, 1.0, 2.5);
-                cab4.LowPass(fs, 5200, 0.8); cab5.LowPass(fs, 6000, 1.0); break;
+                cab1.HighPass(fs, 85, 0.8); cab2.Peak(fs, 130, 1.2, 1.5); cab3.Peak(fs, 450, 1.0, -1.5);
+                cab4.Peak(fs, 2500, 1.1, 3); cab5.Peak(fs, 4000, 1.5, 1);
+                cab6.LowPass(fs, 6800, 0.9); cab7.LowPass(fs, 9000, 0.7); break;
             case CabType.Cab1x12:
-                cab1.HighPass(fs, 110, 0.7); cab2.Peak(fs, 180, 1.0, 1.5); cab3.Peak(fs, 1700, 0.9, 3);
-                cab4.LowPass(fs, 5600, 0.75); cab5.LowPass(fs, 7000, 0.9); break;
+                cab1.HighPass(fs, 100, 0.7); cab2.Peak(fs, 170, 1.0, 1); cab3.Peak(fs, 500, 1.0, -1);
+                cab4.Peak(fs, 2200, 1.0, 3); cab5.Peak(fs, 3800, 1.5, 1.5);
+                cab6.LowPass(fs, 7200, 0.85); cab7.LowPass(fs, 9500, 0.7); break;
         }
         delayLp.LowPass(fs, 3800);
     }
@@ -147,7 +152,7 @@ public sealed class GuitarRig
         double g = Gain / 10;
         return model switch
         {
-            AmpModel.Clean => 1.5 * Math.Pow(8, g),      // 1.5 .. 12
+            AmpModel.Clean => 0.5 * Math.Pow(5, g),      // 0.5 .. 2.5 (lots of headroom)
             AmpModel.Crunch => 4 * Math.Pow(15, g),      // 4 .. 60
             AmpModel.Lead => 12 * Math.Pow(20, g),       // 12 .. 240
             _ => 25 * Math.Pow(24, g),                   // 25 .. 600
@@ -156,7 +161,7 @@ public sealed class GuitarRig
 
     double ModelTrim() => model switch
     {
-        AmpModel.Clean => 1.8,
+        AmpModel.Clean => 1.1,
         AmpModel.Crunch => 0.55,
         AmpModel.Lead => 0.4,
         _ => 0.5,
@@ -254,7 +259,8 @@ public sealed class GuitarRig
             masterSmooth += (targetMaster - masterSmooth) * smooth;
 
             float pre = ampPreEq.Process(ampTight.Process(s)) * (float)gainSmooth;
-            float y = os1.Process(pre, Stage1);
+            bool clean = m == AmpModel.Clean;
+            float y = os1.Process(pre, clean ? CleanStage : Stage1);
             if (twoStages)
             {
                 y = ampInterLp.Process(ampInterHp.Process(y));
@@ -267,11 +273,13 @@ public sealed class GuitarRig
             y = tonePresence.Process(y);
 
             // power amp: gentle saturation
-            y = MathF.Tanh(y * (float)masterSmooth * 0.9f) * (float)trim;
+            y = clean
+                ? CleanStage(y * (float)masterSmooth * 0.8f) * (float)trim
+                : MathF.Tanh(y * (float)masterSmooth * 0.9f) * (float)trim;
 
             // --- cabinet
             if (cabSim)
-                y = cab5.Process(cab4.Process(cab3.Process(cab2.Process(cab1.Process(y)))));
+                y = cab7.Process(cab6.Process(cab5.Process(cab4.Process(cab3.Process(cab2.Process(cab1.Process(y)))))));
             else if (conv != null)
                 y = conv.Process(y) * 0.5f;
 
@@ -308,6 +316,8 @@ public sealed class GuitarRig
     // Asymmetric tube-like curves (bias adds even harmonics)
     static float Stage1(float v) => MathF.Tanh(v + 0.15f) - 0.1489f;
     static float Stage2(float v) => MathF.Tanh(v - 0.1f) + 0.0997f;
+    /// <summary>Clean channel: practically linear up to ~0.7, then a smooth ceiling (no harsh crackle).</summary>
+    static float CleanStage(float v) => v / MathF.Pow(1 + MathF.Pow(MathF.Abs(v), 6), 1f / 6f);
 
     /// <summary>4× oversampling around a static nonlinearity (reduces aliasing at high gain).</summary>
     sealed class Oversampler
