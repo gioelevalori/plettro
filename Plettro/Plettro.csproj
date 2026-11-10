@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Plettro</AssemblyName>
+    <RootNamespace>Plettro</RootNamespace>
+    <ApplicationIcon>Assets\plettro.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>Plettro</Product>
+    <Description>Accordatore e metronomo per chitarra elettrica</Description>
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\plettro.ico" />
+  </ItemGroup>
+
+</Project>
