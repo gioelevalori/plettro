@@ -1,6 +1,6 @@
 # 🎸 Plettro
 
-**Plettro** is a native Windows app for electric guitarists: a precise **tuner**, a sample-accurate **metronome** and a few practice tools. It is designed for USB audio interfaces such as the **Focusrite Scarlett Solo (3rd gen)**.
+**Plettro** is a native Windows app for electric guitarists: a precise **tuner**, a sample-accurate **metronome**, a real-time **amp & effects simulator** and a few practice tools. It is designed for USB audio interfaces such as the **Focusrite Scarlett Solo (3rd gen)**.
 
 The interface is in Italian.
 
@@ -25,6 +25,16 @@ The interface is in Italian.
 - **Suoni di batteria** generati in tempo reale: **batteria completa** (crash e cassa sull'1, rullante su 2 e 4, charleston sugli altri battiti e sulle suddivisioni), **charleston (hi-hat)** e **piatto ride** con campana. Restano anche beep, legno (woodblock) e click.
 - **Tap tempo**, rotellina del mouse e scorciatoie da tastiera
 - Nome del tempo (Largo, Andante, Allegro, Presto…)
+
+### Effetti: simulatore di ampli in tempo reale
+- **Ampli virtuale** con 4 modelli: Clean, Crunch, Lead (britannico modificato), Metal. Il preamp ha un sovracampionamento 4× per ridurre l'aliasing. Ci sono bassi, medi, alti, presence e master.
+- **Pedaliera**: noise gate, overdrive, delay, riverbero
+- **Cassa**: simulazioni 4x12, 2x12 e 1x12, oppure **IR da file .wav**, per caricare risposte all'impulso di casse reali
+- **Preset**: Punk rock (stile Green Day), Pulito cristallino, Crunch blues, Rock classico, Assolo lead, Metal
+- **ASIO** per la latenza minima (driver Focusrite USB ASIO). Se ASIO non c'è, si può usare WASAPI.
+- Misuratori di livello in ingresso e in uscita, con spia CLIP
+
+> Mentre usi gli effetti, spegni **Direct Monitor** sulla Scarlett, altrimenti senti anche la chitarra pulita.
 
 ### Strumenti di allenamento
 - **Allenatore di velocità**: il metronomo accelera da solo (per esempio +5 BPM ogni 4 battute) fino al BPM obiettivo
@@ -58,7 +68,7 @@ The interface is in Italian.
 | `Spazio` | Avvia o ferma il metronomo |
 | `↑` / `↓` | ±1 BPM (con `Maiusc`: ±5) |
 | `T` | Tap tempo |
-| `F1` / `F2` / `F3` | Accordatore / Metronomo / Impostazioni |
+| `F1` / `F2` / `F3` / `F4` | Accordatore / Metronomo / Effetti / Impostazioni |
 
 ## Compilare dai sorgenti
 

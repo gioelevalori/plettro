@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -146,6 +146,7 @@ public partial class MainWindow : Window
         ToneVolText.Text = $"{ToneVolSlider.Value:0}%";
 
         RefreshDevices();
+        BuildFxTab();
 
         CompositionTarget.Rendering += OnRendering;
     }
@@ -154,6 +155,7 @@ public partial class MainWindow : Window
     {
         CompositionTarget.Rendering -= OnRendering;
         SaveSettings();
+        live.Dispose();
         input.Dispose();
         output.Dispose();
     }
@@ -178,6 +180,7 @@ public partial class MainWindow : Window
         settings.GapEnabled = GapCheck.IsChecked == true;
         settings.GapPlay = (int)GapPlaySlider.Value;
         settings.GapMute = (int)GapMuteSlider.Value;
+        SaveFxSettings();
         settings.Save();
     }
 
@@ -341,6 +344,7 @@ public partial class MainWindow : Window
             UpdateLevel(dt);
         }
         UpdateMetronome(dt, Tabs.SelectedIndex == 1);
+        if (Tabs.SelectedIndex == 2) UpdateFxMeters(dt);
         UpdateSession();
     }
 
@@ -962,6 +966,7 @@ public partial class MainWindow : Window
             case Key.F1: Tabs.SelectedIndex = 0; e.Handled = true; break;
             case Key.F2: Tabs.SelectedIndex = 1; e.Handled = true; break;
             case Key.F3: Tabs.SelectedIndex = 2; e.Handled = true; break;
+            case Key.F4: Tabs.SelectedIndex = 3; e.Handled = true; break;
         }
     }
 }

@@ -239,6 +239,13 @@
                 </Grid>
             </TabItem>
 
+            <!-- ======================= EFFECTS ======================= -->
+            <TabItem Header="🎛  Effetti">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="FxRoot" Margin="0,12,0,0"/>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ======================= SETTINGS ======================= -->
             <TabItem Header="⚙  Impostazioni audio">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -298,7 +305,7 @@
                                     <LineBreak/><LineBreak/>
                                     <Run FontWeight="SemiBold">5. Se non vedi la scheda</Run>: collegala, installa Focusrite Control dal sito Focusrite e premi "Aggiorna elenco dispositivi". Se un'altra app (DAW) usa la scheda in modalità esclusiva/ASIO, chiudila o cambia le sue impostazioni.
                                     <LineBreak/><LineBreak/>
-                                    <Run FontWeight="SemiBold">Scorciatoie</Run>: Spazio = avvia/ferma metronomo · ↑/↓ = ±1 BPM (Maiusc = ±5) · T = tap tempo · F1/F2/F3 = cambia scheda.
+                                    <Run FontWeight="SemiBold">Scorciatoie</Run>: Spazio = avvia/ferma metronomo · ↑/↓ = ±1 BPM (Maiusc = ±5) · T = tap tempo · F1/F2/F3/F4 = cambia scheda.
                                 </TextBlock>
                             </StackPanel>
                         </Border>

@@ -27,6 +27,10 @@ public sealed class AppSettings
     public double TrainerStep { get; set; } = 5;
     public int TrainerEvery { get; set; } = 4;
 
+    public Plettro.Audio.Fx.RigSettings? Rig { get; set; }
+    public string? FxDriver { get; set; }
+    public int FxInputChannel { get; set; } = 1;
+
     public bool GapEnabled { get; set; }
     public int GapPlay { get; set; } = 3;
     public int GapMute { get; set; } = 1;
