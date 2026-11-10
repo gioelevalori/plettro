@@ -30,6 +30,7 @@ public sealed class AppSettings
     public Plettro.Audio.Fx.RigSettings? Rig { get; set; }
     public string? FxDriver { get; set; }
     public int FxInputChannel { get; set; } = 1;
+    public double? FxNoiseFloorDb { get; set; }
 
     public bool GapEnabled { get; set; }
     public int GapPlay { get; set; } = 3;

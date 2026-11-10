@@ -50,7 +50,8 @@ public sealed class GuitarRig
     CabType cab = CabType.Cab4x12;
 
     // ---------------- state ----------------
-    double gateEnv, gateGain = 1;
+    double gateEnv, gateGain; // starts closed
+    int gateHold;
     Biquad driveHp, driveTone, driveMidHump;
     Biquad ampTight, ampPreEq, ampInterHp, ampInterLp;
     Biquad toneBass, toneMid, toneTreble, tonePresence;
@@ -65,6 +66,23 @@ public sealed class GuitarRig
 
     public float PeakOut { get; private set; }
     public float PeakIn { get; private set; }
+
+    // ---------------- noise calibration ----------------
+    int calibrateLeft;
+    float calibratePeak;
+    double calibratedNoiseDb = double.NaN;
+
+    /// <summary>Measured input noise peak (dBFS) after a calibration, NaN while unknown.</summary>
+    public double CalibratedNoiseDb => Volatile.Read(ref calibratedNoiseDb);
+    public bool IsCalibrating => Volatile.Read(ref calibrateLeft) > 0;
+
+    /// <summary>Listens to the input for a while (output muted) to measure hum/noise.</summary>
+    public void StartCalibration(double seconds = 1.5)
+    {
+        calibratePeak = 0;
+        Volatile.Write(ref calibratedNoiseDb, double.NaN);
+        Volatile.Write(ref calibrateLeft, (int)(seconds * fs));
+    }
 
     public GuitarRig(double sampleRate)
     {
@@ -154,7 +172,8 @@ public sealed class GuitarRig
         double gateThr = Math.Pow(10, GateThresholdDb / 20);
         double envRelease = Math.Exp(-1 / (0.05 * fs));
         double gateOpen = 1 - Math.Exp(-1 / (0.001 * fs));
-        double gateClose = 1 - Math.Exp(-1 / (0.06 * fs));
+        double gateClose = 1 - Math.Exp(-1 / (0.012 * fs));
+        int holdSamples = (int)(0.05 * fs);
         double smooth = 1 - Math.Exp(-1 / (0.02 * fs));
 
         double driveGain = 2 + Drive * 6;
@@ -174,11 +193,25 @@ public sealed class GuitarRig
             float a = Math.Abs(s);
             if (a > peakIn) peakIn = a;
 
+            if (calibrateLeft > 0)
+            {
+                // ignore the first 150 ms (switch-on transients)
+                if (calibrateLeft < (int)(fs * 1.35) && a > calibratePeak) calibratePeak = a;
+                if (--calibrateLeft == 0)
+                    Volatile.Write(ref calibratedNoiseDb, 20 * Math.Log10(Math.Max(calibratePeak, 1e-6)));
+                x[i] = 0;
+                continue;
+            }
             // --- noise gate (applied to the input, follows the input envelope)
             if (GateOn)
             {
                 gateEnv = Math.Max(a, gateEnv * envRelease);
-                double target = gateEnv > gateThr ? 1 : 0;
+                // hysteresis (opens above the threshold, closes 6 dB below it) + 50 ms hold
+                bool open = gateGain > 0.5;
+                double target;
+                if (gateEnv > (open ? gateThr * 0.5 : gateThr)) { target = 1; gateHold = holdSamples; }
+                else if (gateHold > 0) { gateHold--; target = open ? 1 : 0; }
+                else target = 0;
                 gateGain += (target - gateGain) * (target > gateGain ? gateOpen : gateClose);
                 s *= (float)gateGain;
             }

@@ -27,6 +27,7 @@ public partial class MainWindow
     Ellipse fxClip = null!;
     double fxInDisplay = -90, fxOutDisplay = -90;
     DateTime fxLastClip;
+    bool fxCalibrating;
 
     // =====================================================================
     // Build UI
@@ -35,6 +36,7 @@ public partial class MainWindow
     void BuildFxTab()
     {
         rig = settings.Rig?.Clone() ?? RigPresets.All[0].Settings.Clone();
+        AdaptGateToNoise();
 
         // ---------- top bar: driver, input, power ----------
         var top = new Border { Style = (Style)FindResource("Card"), Margin = new Thickness(0, 0, 0, 10) };
@@ -119,6 +121,7 @@ public partial class MainWindow
             var keepIr = rig.IrPath;
             rig = RigPresets.All[i].Settings.Clone();
             rig.IrPath = keepIr;
+            AdaptGateToNoise();
             fxPresetDesc.Text = RigPresets.All[i].Description;
             RefreshFxControls();
             ApplyRig();
@@ -135,8 +138,11 @@ public partial class MainWindow
         FxRoot.Children.Add(board);
 
         var gate = Pedal(board, "Noise gate", () => rig.GateOn, v => rig.GateOn = v);
-        Knob(gate, "Soglia", -80, -30, () => rig.GateThresholdDb, v => rig.GateThresholdDb = v, v => $"{v:0} dB");
-        gate.Children.Add(Hint("Toglie il fruscio tra una pennata e l'altra. Alza la soglia con i suoni molto distorti."));
+        Knob(gate, "Soglia", -80, -15, () => rig.GateThresholdDb, v => rig.GateThresholdDb = v, v => $"{v:0} dB");
+        var calib = new Button { Content = "🎚  Calibra rumore", Focusable = false, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
+        calib.Click += (_, _) => StartCalibration();
+        gate.Children.Add(calib);
+        gate.Children.Add(Hint("Toglie il ronzio quando non suoni. \"Calibra rumore\" misura il ronzio della tua chitarra (tieni ferme le corde) e imposta la soglia da solo."));
 
         var od = Pedal(board, "Overdrive", () => rig.DriveOn, v => rig.DriveOn = v);
         Knob(od, "Drive", 0, 10, () => rig.Drive, v => rig.Drive = v, Num);
@@ -327,6 +333,7 @@ public partial class MainWindow
                 live.StartWasapi(enumerator.GetDevice(inItem.Id), enumerator.GetDevice(outItem.Id), ch, ConfigureRig);
             }
             fxPowerButton.Content = "⏻  Spegni ampli";
+            if (settings.FxNoiseFloorDb == null) { StartCalibration(); return; }
             fxStatus.Text = $"🔥 Ampli acceso · {live.Description} · latenza ≈ {live.LatencyMs:0} ms" +
                             (UsingAsio ? "" : "  ·  Con WASAPI si sente un po' di ritardo: per suonare meglio usa il driver ASIO.") +
                             "\nRicorda: DIRECT MONITOR spento sulla Scarlett.";
@@ -338,6 +345,39 @@ public partial class MainWindow
             fxStatus.Text = "Impossibile accendere l'ampli: " + ex.Message +
                             "\nChiudi altri programmi che usano la scheda audio (DAW, altri simulatori) e riprova, oppure prova un altro driver.";
         }
+    }
+
+    void StartCalibration()
+    {
+        var r = live.Rig;
+        if (r == null) { fxStatus.Text = "Accendi prima l'ampli, poi premi \"Calibra rumore\"."; return; }
+        r.StartCalibration(1.5);
+        fxCalibrating = true;
+        fxStatus.Text = "🎚 Misuro il ronzio di fondo: NON suonare e tieni ferme le corde con la mano per 2 secondi…";
+    }
+
+    void FinishCalibration(double noiseDb)
+    {
+        fxCalibrating = false;
+        settings.FxNoiseFloorDb = noiseDb;
+        rig.GateOn = true;
+        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + 8), -80, -15);
+        RefreshFxControls();
+        ApplyRig();
+        string advice = noiseDb > -45
+            ? "\n⚠ Il ronzio è alto: abbassa un po' il GAIN della Scarlett, allontana la chitarra da PC e monitor, oppure abbassa il volume della chitarra quando non suoni."
+            : "";
+        fxStatus.Text = $"🔥 Ampli acceso · {live.Description} · latenza ≈ {live.LatencyMs:0} ms\n" +
+                        $"✓ Ronzio di fondo: {noiseDb:0} dB → gate impostato a {rig.GateThresholdDb:0} dB. Ora puoi suonare!{advice}";
+    }
+
+    /// <summary>Presets have fixed gate thresholds: never put the threshold below the measured noise.</summary>
+    void AdaptGateToNoise()
+    {
+        if (settings.FxNoiseFloorDb is not double nf) return;
+        double min = Math.Round(nf + 8);
+        if (rig.GateThresholdDb < min) rig.GateThresholdDb = Math.Min(min, -15);
+        if (nf > -72) rig.GateOn = true;
     }
 
     void StopLive()
@@ -411,6 +451,8 @@ public partial class MainWindow
     void UpdateFxMeters(double dt)
     {
         var r = live.Rig;
+        if (fxCalibrating && r != null && !r.IsCalibrating && !double.IsNaN(r.CalibratedNoiseDb))
+            FinishCalibration(r.CalibratedNoiseDb);
         float pin = r?.PeakIn ?? 0, pout = r?.PeakOut ?? 0;
         if (pin >= 0.98f) fxLastClip = DateTime.UtcNow;
         Meter(fxInBar, pin, ref fxInDisplay, dt);
