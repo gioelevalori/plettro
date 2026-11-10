@@ -40,6 +40,9 @@ public partial class MainWindow
     void BuildFxTab()
     {
         rig = settings.Rig?.Clone() ?? RigPresets.All[0].Settings.Clone();
+        // repair bad calibrations saved by v1.2.1/v1.2.2 (a ringing string measured as "noise")
+        if (settings.FxNoiseFloorDb is double bad && bad > -42) settings.FxNoiseFloorDb = null;
+        if (rig.GateThresholdDb > MaxGateDb) rig.GateThresholdDb = -50;
         AdaptGateToNoise();
 
         // ---------- top bar: driver, input, power ----------
@@ -146,7 +149,7 @@ public partial class MainWindow
         FxRoot.Children.Add(board);
 
         var gate = Pedal(board, "Noise gate", () => rig.GateOn, v => rig.GateOn = v);
-        Knob(gate, "Soglia", -80, -15, () => rig.GateThresholdDb, v => rig.GateThresholdDb = v, v => $"{v:0} dB");
+        Knob(gate, "Soglia", -80, MaxGateDb, () => rig.GateThresholdDb, v => rig.GateThresholdDb = v, v => $"{v:0} dB");
         var calib = new Button { Content = "🎚  Calibra rumore", Focusable = false, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
         calib.Click += (_, _) => StartCalibration();
         gate.Children.Add(calib);
@@ -361,15 +364,25 @@ public partial class MainWindow
         if (r == null) { fxStatus.Text = "Accendi prima l'ampli, poi premi \"Calibra rumore\"."; return; }
         r.StartCalibration(1.5);
         fxCalibrating = true;
-        fxStatus.Text = "🎚 Misuro il ronzio di fondo: NON suonare e tieni ferme le corde con la mano per 2 secondi…";
+        fxStatus.Text = "🎚 Misuro il ronzio di fondo: appoggia la mano su TUTTE le corde (non devono vibrare) e non suonare per 2 secondi…";
     }
+
+    /// <summary>Highest gate threshold ever used: above this the gate would mute normal playing.</summary>
+    const double MaxGateDb = -40;
 
     void FinishCalibration(double noiseDb)
     {
         fxCalibrating = false;
+        if (noiseDb > -42)
+        {
+            // something was ringing or being played: do not trust it
+            fxStatus.Text = $"⚠ Ho sentito delle corde suonare durante la misura ({noiseDb:0} dB), quindi non l'ho usata.\n" +
+                            "Appoggia la mano su tutte le corde per smorzarle e premi di nuovo \"Calibra rumore\".";
+            return;
+        }
         settings.FxNoiseFloorDb = noiseDb;
         rig.GateOn = true;
-        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + 6), -80, -15);
+        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + 6), -80, MaxGateDb);
         RefreshFxControls();
         ApplyRig();
         string advice = noiseDb > -45
@@ -384,7 +397,7 @@ public partial class MainWindow
     {
         if (settings.FxNoiseFloorDb is not double nf) return;
         double min = Math.Round(nf + 6);
-        if (rig.GateThresholdDb < min) rig.GateThresholdDb = Math.Min(min, -15);
+        if (rig.GateThresholdDb < min) rig.GateThresholdDb = Math.Min(min, MaxGateDb);
         if (nf > -72) rig.GateOn = true;
     }
 

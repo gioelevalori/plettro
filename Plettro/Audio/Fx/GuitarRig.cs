@@ -72,6 +72,8 @@ public sealed class GuitarRig
     // ---------------- noise calibration ----------------
     int calibrateLeft;
     float calibratePeak;
+    readonly float[] calibrateBlocks = new float[256];
+    int calibrateBlockCount, calibrateBlockFill;
     double calibratedNoiseDb = double.NaN;
 
     /// <summary>Measured input noise peak (dBFS) after a calibration, NaN while unknown.</summary>
@@ -82,6 +84,7 @@ public sealed class GuitarRig
     public void StartCalibration(double seconds = 1.5)
     {
         calibratePeak = 0;
+        calibrateBlockCount = calibrateBlockFill = 0;
         Volatile.Write(ref calibratedNoiseDb, double.NaN);
         Volatile.Write(ref calibrateLeft, (int)(seconds * fs));
     }
@@ -197,10 +200,29 @@ public sealed class GuitarRig
 
             if (calibrateLeft > 0)
             {
-                // ignore the first 150 ms (switch-on transients)
-                if (calibrateLeft < (int)(fs * 1.35) && a > calibratePeak) calibratePeak = a;
+                // ignore the first 150 ms (switch-on transients); collect peaks of 20 ms blocks
+                if (calibrateLeft < (int)(fs * 1.35))
+                {
+                    if (a > calibratePeak) calibratePeak = a;
+                    if (++calibrateBlockFill >= (int)(fs * 0.02))
+                    {
+                        if (calibrateBlockCount < calibrateBlocks.Length) calibrateBlocks[calibrateBlockCount++] = calibratePeak;
+                        calibratePeak = 0;
+                        calibrateBlockFill = 0;
+                    }
+                }
                 if (--calibrateLeft == 0)
-                    Volatile.Write(ref calibratedNoiseDb, 20 * Math.Log10(Math.Max(calibratePeak, 1e-6)));
+                {
+                    // 75th percentile of block peaks: steady hum counts, isolated clicks and bumps do not
+                    double noise = 1e-6;
+                    if (calibrateBlockCount > 0)
+                    {
+                        var sorted = calibrateBlocks.AsSpan(0, calibrateBlockCount).ToArray();
+                        Array.Sort(sorted);
+                        noise = Math.Max(sorted[calibrateBlockCount * 3 / 4], 1e-6f);
+                    }
+                    Volatile.Write(ref calibratedNoiseDb, 20 * Math.Log10(noise));
+                }
                 x[i] = 0;
                 continue;
             }
