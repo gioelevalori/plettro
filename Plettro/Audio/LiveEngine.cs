@@ -80,6 +80,12 @@ public sealed class LiveEngine : IDisposable
 
     void OnAsioAudio(object? sender, AsioAudioAvailableEventArgs e)
     {
+        try { OnAsioAudioCore(e); }
+        catch (Exception ex) { e.WrittenToOutputBuffers = false; App.LogError("ampli ASIO", ex); } // driver plays silence
+    }
+
+    void OnAsioAudioCore(AsioAudioAvailableEventArgs e)
+    {
         var rig = Rig;
         if (rig == null) return;
         int n = e.SamplesPerBuffer;
@@ -187,6 +193,12 @@ public sealed class LiveEngine : IDisposable
     }
 
     void OnWasapiData(object? sender, WaveInEventArgs e)
+    {
+        try { OnWasapiDataCore(e); }
+        catch (Exception ex) { App.LogError("ampli WASAPI", ex); }
+    }
+
+    void OnWasapiDataCore(WaveInEventArgs e)
     {
         var rig = Rig;
         var buf = buffered;

@@ -216,6 +216,12 @@ public sealed class MetronomeProvider : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
+        try { return ReadCore(buffer, offset, count); }
+        catch (Exception ex) { App.LogError("metronomo", ex); Array.Clear(buffer, offset, count); return count; }
+    }
+
+    int ReadCore(float[] buffer, int offset, int count)
+    {
         var set = sounds;
         if (previewRequested)
         {

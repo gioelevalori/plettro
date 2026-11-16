@@ -47,7 +47,13 @@ public sealed class InputMonitor : IDisposable
     public int SampleRate { get; private set; }
     public int Channels => channels;
     /// <summary>0 = input 1 (left), 1 = input 2 (right), -1 = mix.</summary>
-    public int ActiveChannel => Mode == ChannelMode.Mix || channels < 2 ? (channels < 2 ? 0 : -1) : activeChannel;
+    public int ActiveChannel => channels < 2 ? 0 : Mode switch
+    {
+        ChannelMode.Left => 0,
+        ChannelMode.Right => 1,
+        ChannelMode.Mix => -1,
+        _ => activeChannel,
+    };
     public bool IsRunning => capture != null;
 
     public float Peak => Volatile.Read(ref peak);
@@ -107,6 +113,12 @@ public sealed class InputMonitor : IDisposable
     }
 
     void OnData(object? sender, WaveInEventArgs e)
+    {
+        try { OnDataCore(e); }
+        catch (Exception ex) { App.LogError("ingresso accordatore", ex); } // never crash the app from the audio thread
+    }
+
+    void OnDataCore(WaveInEventArgs e)
     {
         if (detector == null || lowpass == null) return;
         var buf = e.Buffer;

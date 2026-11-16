@@ -36,6 +36,12 @@ public sealed class ToneProvider : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
+        try { return ReadCore(buffer, offset, count); }
+        catch (Exception ex) { App.LogError("nota di riferimento", ex); Array.Clear(buffer, offset, count); return count; }
+    }
+
+    int ReadCore(float[] buffer, int offset, int count)
+    {
         lock (sync)
         {
             if (pendingFreq >= 0)

@@ -89,6 +89,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Deactivated += (_, _) => { if (loaded) SaveSettings(); };
     }
 
     // =====================================================================
@@ -195,7 +196,8 @@ public partial class MainWindow : Window
         output.Dispose();
     }
 
-    void SaveSettings()
+    /// <summary>Saves everything to disk (also called when the window loses focus and on Windows shutdown).</summary>
+    public void SaveSettings()
     {
         settings.TuningIndex = TuningCombo.SelectedIndex;
         settings.ChannelMode = ChannelCombo.SelectedIndex;
@@ -699,7 +701,12 @@ public partial class MainWindow : Window
             _ => "Mix 1+2",
         };
         string name = InputCombo.SelectedItem is DeviceItem di ? di.Name : "";
-        string hint = levelDisplay < -45 ? "  ·  segnale debole: alza il GAIN sulla Scarlett" : clip ? "  ·  ⚠ saturazione: abbassa il GAIN" : "";
+        // clipping first; "weak signal" only while a note is actually being played
+        var reading = input.Latest;
+        bool playing = reading.Frequency > 0 && (DateTime.UtcNow - reading.TimeUtc).TotalMilliseconds < 400;
+        string hint = clip ? "  ·  ⚠ saturazione: abbassa il GAIN sulla Scarlett"
+                    : playing && levelDisplay < -40 ? "  ·  segnale debole: alza un po' il GAIN sulla Scarlett"
+                    : "";
         InputInfoText.Text = $"{name}  ·  {ch}{(input.Mode == ChannelMode.Auto ? " (auto)" : "")}{hint}";
     }
 
