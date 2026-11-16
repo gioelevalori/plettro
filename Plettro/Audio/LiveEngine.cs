@@ -28,6 +28,10 @@ public sealed class LiveEngine : IDisposable
     public double LatencyMs { get; private set; }
     public string Description { get; private set; } = "";
     public event Action<string>? Stopped;
+    /// <summary>The ASIO driver asks to be restarted (buffer size or sample rate changed, device lost).</summary>
+    public event Action? ResetRequested;
+
+    void OnDriverReset(object? sender, EventArgs e) => ResetRequested?.Invoke();
 
     public static string[] AsioDrivers()
     {
@@ -57,6 +61,7 @@ public sealed class LiveEngine : IDisposable
             configure(Rig);
 
             a.AudioAvailable += OnAsioAudio;
+            a.DriverResetRequest += OnDriverReset;
             a.InitRecordAndPlayback(new SilenceProvider(WaveFormat.CreateIeeeFloatWaveFormat(rate, 2)), 1, rate);
             a.Play();
             asio = a;
@@ -213,6 +218,7 @@ public sealed class LiveEngine : IDisposable
         if (a != null)
         {
             a.AudioAvailable -= OnAsioAudio;
+            a.DriverResetRequest -= OnDriverReset;
             try { a.Stop(); } catch { }
             try { a.Dispose(); } catch { }
         }

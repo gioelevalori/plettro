@@ -50,6 +50,9 @@ public partial class MainWindow : Window
 
     bool loaded;
     bool suppressDeviceEvents;
+    DeviceWatcher? deviceWatcher;
+    System.Windows.Threading.DispatcherTimer? deviceDebounce;
+    string deviceSnapshot = "";
 
     // tuner
     Line needle = null!;
@@ -149,11 +152,43 @@ public partial class MainWindow : Window
         BuildFxTab();
 
         CompositionTarget.Rendering += OnRendering;
+
+        // react when the Scarlett (or any device) is plugged in / unplugged while Plettro is open
+        deviceSnapshot = DeviceSnapshot();
+        deviceDebounce = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
+        deviceDebounce.Tick += (_, _) => { deviceDebounce.Stop(); OnDevicesChanged(); };
+        deviceWatcher = new DeviceWatcher(() => Dispatcher.BeginInvoke(() => { deviceDebounce.Stop(); deviceDebounce.Start(); }));
+        try { enumerator.RegisterEndpointNotificationCallback(deviceWatcher); } catch { deviceWatcher = null; }
+    }
+
+    string DeviceSnapshot()
+    {
+        try
+        {
+            return string.Join("|", enumerator.EnumerateAudioEndPoints(DataFlow.All, DeviceState.Active).Select(d => d.ID).OrderBy(s => s));
+        }
+        catch { return ""; }
+    }
+
+    void OnDevicesChanged()
+    {
+        var snap = DeviceSnapshot();
+        if (snap == deviceSnapshot) return;
+        deviceSnapshot = snap;
+        bool scarlett = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active).Any(d => IsFocusrite(d.FriendlyName));
+        RefreshDevices();
+        StatusText.Text = scarlett ? "🔌 Dispositivi audio cambiati: Scarlett collegata." : "🔌 Dispositivi audio cambiati: Scarlett non collegata.";
+        if (live.IsRunning && !scarlett && UsingAsio)
+        {
+            StopLive();
+            fxStatus.Text = "⚠ La Scarlett è stata scollegata: ampli spento. Ricollegala e riaccendilo.";
+        }
     }
 
     void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         CompositionTarget.Rendering -= OnRendering;
+        if (deviceWatcher != null) { try { enumerator.UnregisterEndpointNotificationCallback(deviceWatcher); } catch { } }
         SaveSettings();
         live.Dispose();
         input.Dispose();
@@ -962,11 +997,11 @@ public partial class MainWindow : Window
         {
             case Key.Space:
                 ToggleMetronome(); e.Handled = true; break;
-            case Key.Up when !inSelector:
+            case Key.Up when !inSelector && Tabs.SelectedIndex == 1:
                 SetBpm(Metro.Bpm + (shift ? 5 : 1)); e.Handled = true; break;
-            case Key.Down when !inSelector:
+            case Key.Down when !inSelector && Tabs.SelectedIndex == 1:
                 SetBpm(Metro.Bpm - (shift ? 5 : 1)); e.Handled = true; break;
-            case Key.T:
+            case Key.T when Tabs.SelectedIndex == 1:
                 Tap(); e.Handled = true; break;
             case Key.F1: Tabs.SelectedIndex = 0; e.Handled = true; break;
             case Key.F2: Tabs.SelectedIndex = 1; e.Handled = true; break;

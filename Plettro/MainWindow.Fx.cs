@@ -39,6 +39,19 @@ public partial class MainWindow
 
     void BuildFxTab()
     {
+        live.ResetRequested += () => Dispatcher.BeginInvoke(() =>
+        {
+            if (!live.IsRunning) return;
+            RestartLive();
+            if (live.IsRunning)
+                fxStatus.Text = $"↻ Il driver ASIO è cambiato (buffer o frequenza): ampli riavviato · {live.Description} · latenza ≈ {live.LatencyMs:0} ms";
+        });
+        live.Stopped += msg => Dispatcher.BeginInvoke(() =>
+        {
+            StopLive();
+            fxStatus.Text = "⚠ L'ampli si è fermato perché il dispositivo audio non risponde più (" + msg + "). Controlla la Scarlett e riaccendilo.";
+        });
+
         rig = settings.Rig?.Clone() ?? RigPresets.All[0].Settings.Clone();
         // repair bad calibrations saved by v1.2.1/v1.2.2 (a ringing string measured as "noise")
         if (settings.FxNoiseFloorDb is double bad && bad > -42) settings.FxNoiseFloorDb = null;
@@ -419,6 +432,7 @@ public partial class MainWindow
     void StopLive()
     {
         live.Stop();
+        fxCalibrating = false;
         fxPowerButton.Content = "⏻  Accendi ampli";
         UpdateFxHints();
     }

@@ -67,8 +67,8 @@ The interface is in Italian.
 | Tasto | Azione |
 |---|---|
 | `Spazio` | Avvia o ferma il metronomo |
-| `↑` / `↓` | ±1 BPM (con `Maiusc`: ±5) |
-| `T` | Tap tempo |
+| `↑` / `↓` | ±1 BPM (con `Maiusc`: ±5), nella scheda Metronomo |
+| `T` | Tap tempo, nella scheda Metronomo |
 | `F1` / `F2` / `F3` / `F4` | Accordatore / Metronomo / Effetti / Impostazioni |
 
 ## Compilare dai sorgenti
