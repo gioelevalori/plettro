@@ -238,10 +238,11 @@ public sealed class GuitarRig
             {
                 gateEnv = Math.Max(a, gateEnv * envRelease);
                 if (gateEnv < 1e-12) gateEnv = 0;
-                // hysteresis (opens above the threshold, closes 4.4 dB below it) + 80 ms hold
+                // wide hysteresis: opens only on a real pick attack (touches stay below the threshold),
+                // closes 20 dB lower so notes ring out fully; 80 ms hold
                 bool open = gateGain > 0.5;
                 double target;
-                if (gateEnv > (open ? gateThr * 0.6 : gateThr)) { target = 1; gateHold = holdSamples; }
+                if (gateEnv > (open ? gateThr * 0.1 : gateThr)) { target = 1; gateHold = holdSamples; }
                 else if (gateHold > 0) { gateHold--; target = open ? 1 : 0; }
                 else target = 0;
                 gateGain += (target - gateGain) * (target > gateGain ? gateOpen : gateClose);

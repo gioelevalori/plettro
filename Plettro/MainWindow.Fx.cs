@@ -149,11 +149,11 @@ public partial class MainWindow
         FxRoot.Children.Add(board);
 
         var gate = Pedal(board, "Noise gate", () => rig.GateOn, v => rig.GateOn = v);
-        Knob(gate, "Soglia", -80, MaxGateDb, () => rig.GateThresholdDb, v => rig.GateThresholdDb = v, v => $"{v:0} dB");
+        Knob(gate, "Sensibilità al tocco", -70, MaxGateDb, () => rig.GateThresholdDb, v => rig.GateThresholdDb = v, v => $"{v:0} dB");
         var calib = new Button { Content = "🎚  Calibra rumore", Focusable = false, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
         calib.Click += (_, _) => StartCalibration();
         gate.Children.Add(calib);
-        gate.Children.Add(Hint("Toglie il ronzio quando non suoni. \"Calibra rumore\" misura il ronzio della tua chitarra (tieni ferme le corde) e imposta la soglia da solo."));
+        gate.Children.Add(Hint("Il gate si apre solo con una pennata vera: toccare o sfiorare le corde non fa suonare l'ampli. Una nota già partita suona fino in fondo. Se una nota suonata piano non passa, abbassa questa soglia; se passano i tocchi, alzala. \"Calibra rumore\" la imposta da solo."));
 
         var od = Pedal(board, "Overdrive", () => rig.DriveOn, v => rig.DriveOn = v);
         Knob(od, "Drive", 0, 10, () => rig.Drive, v => rig.Drive = v, Num);
@@ -368,7 +368,10 @@ public partial class MainWindow
     }
 
     /// <summary>Highest gate threshold ever used: above this the gate would mute normal playing.</summary>
-    const double MaxGateDb = -40;
+    const double MaxGateDb = -20;
+
+    /// <summary>Opening threshold above the hum: touches and squeaks measured 20-40 dB below picked notes.</summary>
+    const double GateMarginDb = 24;
 
     void FinishCalibration(double noiseDb)
     {
@@ -382,21 +385,21 @@ public partial class MainWindow
         }
         settings.FxNoiseFloorDb = noiseDb;
         rig.GateOn = true;
-        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + 6), -80, MaxGateDb);
+        rig.GateThresholdDb = Math.Clamp(Math.Round(noiseDb + GateMarginDb), -80, MaxGateDb);
         RefreshFxControls();
         ApplyRig();
         string advice = noiseDb > -45
             ? "\n⚠ Il ronzio è alto: abbassa un po' il GAIN della Scarlett, allontana la chitarra da PC e monitor, oppure abbassa il volume della chitarra quando non suoni."
             : "";
         fxStatus.Text = $"🔥 Ampli acceso · {live.Description} · latenza ≈ {live.LatencyMs:0} ms\n" +
-                        $"✓ Ronzio di fondo: {noiseDb:0} dB → gate impostato a {rig.GateThresholdDb:0} dB. Ora puoi suonare!{advice}";
+                        $"✓ Ronzio di fondo: {noiseDb:0} dB → il gate si apre sopra {rig.GateThresholdDb:0} dB e si chiude sotto {rig.GateThresholdDb - 20:0} dB. Ora puoi suonare: toccare le corde non fa più suonare l'ampli.{advice}";
     }
 
     /// <summary>Presets have fixed gate thresholds: never put the threshold below the measured noise.</summary>
     void AdaptGateToNoise()
     {
         if (settings.FxNoiseFloorDb is not double nf) return;
-        double min = Math.Round(nf + 6);
+        double min = Math.Round(nf + GateMarginDb);
         if (rig.GateThresholdDb < min) rig.GateThresholdDb = Math.Min(min, MaxGateDb);
         if (nf > -72) rig.GateOn = true;
     }
@@ -511,7 +514,7 @@ public partial class MainWindow
         if (r == null) fxLevelText.Text = "";
         else
         {
-            string gateTxt = rig.GateOn ? $"soglia gate {rig.GateThresholdDb:0} dB · gate {(r.GateIsOpen ? "APERTO" : "chiuso")}" : "gate spento";
+            string gateTxt = rig.GateOn ? $"gate: apre sopra {rig.GateThresholdDb:0} dB, chiude sotto {rig.GateThresholdDb - 20:0} dB · {(r.GateIsOpen ? "APERTO" : "chiuso")}" : "gate spento";
             string noiseTxt = settings.FxNoiseFloorDb is double nf ? $" · ronzio {nf:0} dB" : "";
             fxLevelText.Text = $"Ingresso: picco {fxInHold:0} dB{noiseTxt} · {gateTxt}";
         }
